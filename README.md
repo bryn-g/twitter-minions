@@ -3,7 +3,7 @@ Maintains simple ad hoc database of a twitter users followers and unfollowers. D
 
 This project was created to figure out who has unfollowed or followed me when I notice changes in my twitter follower count. Additional data such as follower json is stored as it may be useful for some analytics in the future.
 
-Unfollowers and followers are determined by comparing current followers to the database records. People who follow and unfollow in-between the running of this script will not be captured in the database.
+Unfollowers and followers are determined by comparing current followers to the database records. People who both follow and then unfollow in-between instances of running the script will not be captured in the database.
 
 ### Requirements
 
@@ -73,5 +73,6 @@ If the ```--noupdates``` option is not used or false then API user objects will 
 The first time the script is run for a user it will do a full update of followers. This can be very slow and may require many lengthy pauses whilst the twitter API rate limits reset.
 
 After the first time the ```--noupdates``` or ```-nu``` option should generally be used as it is much faster and unlikely to hit rate limits - particularly if the user has large numbers of followers.
-
+```ruby
 end.
+```
