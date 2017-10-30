@@ -1,7 +1,9 @@
 # twitter-minions
-Maintains simple database of a twitter users followers and unfollowers. Data is collected using the python [tweepy](http://www.tweepy.org/) wrapper for the [twitter API](https://developer.twitter.com/en/docs/api-reference-index) and stored in a SQLite3 database.
+Maintains simple ad hoc database of a twitter users followers and unfollowers. Data is collected using the python [tweepy](http://www.tweepy.org/) wrapper for the [twitter API](https://developer.twitter.com/en/docs/api-reference-index) and stored in a SQLite3 database.
 
-This project was created to figure out who has unfollowed or followed me when I notice changes in my twitter follower count. Additional data about followers is collected as I may use it to perform some analytics in the future.
+This project was created to figure out who has unfollowed or followed me when I notice changes in my twitter follower count. Additional data such as follower json is stored as it may be useful for some analytics in the future.
+
+Unfollowers and followers are determined by comparing current followers to the database records. People who follow and unfollow in-between the running of this script will not be captured in the database.
 
 ### Requirements
 
