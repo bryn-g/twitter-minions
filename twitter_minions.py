@@ -11,8 +11,6 @@ import sqlite3
 import tweepy
 import prettytable
 
-import app_rate_limits
-
 def check_sqlite_database(file_path):
     """ checks if the sqlite database exists and gives the
     option to create one if it doesn't.
@@ -260,15 +258,13 @@ def create_follower_database(db_name):
 def get_arguments():
     """ parse and return user supplied arguments. """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='maintains a database of a twitter users followers and unfollowers.')
 
     parser.add_argument('-u', '--user', help="twitter user @name or id", type=valid_twitter_user, \
-        required=True)
+                        required=True)
     parser.add_argument('-nu', '--noupdates', help="do not make a tweepy_api.followers " \
-        "request that updates user data for all database follower records",
+                        "request that updates user data for all database follower records",
                         required=False, action='store_true')
-    parser.add_argument('-rl', '--ratelimits', help="print twitter api resource limits", \
-        required=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -304,7 +300,6 @@ def main():
       -u USER, --user USER  twitter user @name or id
       -nu, --noupdates      do not make a tweepy_api.followers request that
                             updates user data for all database follower records
-      -rl, --ratelimits     print twitter api resource limits
     """
 
     # twitter api application keys
@@ -318,15 +313,15 @@ def main():
 
     user_args = get_arguments()
 
-    auth = tweepy.OAuthHandler(app_consumer_key, app_consumer_secret)
-    auth.set_access_token(app_access_key, app_access_secret)
+    try:
+        auth = tweepy.OAuthHandler(app_consumer_key, app_consumer_secret)
+        auth.set_access_token(app_access_key, app_access_secret)
 
-    tweepy_api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, \
-        compression=True)
-
-    # print twitter api resource limits
-    if user_args.ratelimits:
-        app_rate_limits.print_rate_limits(tweepy_api)
+        tweepy_api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, \
+            compression=True)
+    except tweepy.TweepError as err:
+        print "tweepy error: " + str(err.message)
+        sys.exit()
 
     twitter_user = None
 
@@ -507,10 +502,6 @@ def main():
     # end of updates path
 
     db_connection.close()
-
-    # print twitter api resource limits
-    if user_args.ratelimits:
-        app_rate_limits.print_rate_limits(tweepy_api)
 
     print "end."
 
