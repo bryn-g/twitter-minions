@@ -13,14 +13,13 @@ Unfollowers and followers are determined by comparing current followers to the d
 ### Usage
 
 ```
-usage: followers.py [-h] -u USER [-nu] [-rl]
+usage: followers.py [-h] -u USER [-nu]
 
   optional arguments:
     -h, --help            show this help message and exit
     -u USER, --user USER  twitter user @name or id
     -nu, --noupdates      do not make a tweepy_api.followers request that
                           updates user data for all database follower records
-    -rl, --ratelimits     print twitter api resource limits
 ```
 
 ### Database
