@@ -7,19 +7,21 @@ Unfollowers and followers are determined by comparing current followers to the d
 
 ### Requirements
 
-```python (2.7)``` ```sqlite3 (2.6)```
+```python (3.6)``` ```sqlite3 (2.6)```
 ```tweepy (3.5.0)``` ```prettytable (0.7.2)```
 
 ### Usage
 
 ```
-usage: followers.py [-h] -u USER [-nu]
+usage: twitter_minions.py [-h] -u USER [-upd]
 
-  optional arguments:
-    -h, --help            show this help message and exit
-    -u USER, --user USER  twitter user @name or id
-    -nu, --noupdates      do not make a tweepy_api.followers request that
-                          updates user data for all database follower records
+maintains a database of a twitter users followers and unfollowers.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u USER, --user USER  twitter user @name or numeric id
+  -upd, --update        make a tweepy_api.followers request that updates user
+                        data for all database follower records
 ```
 
 ### Database
@@ -71,7 +73,9 @@ If the ```--noupdates``` option is not used or false then API user objects will 
 
 The first time the script is run for a user it will do a full update of followers. This can be very slow and may require many lengthy pauses whilst the twitter API rate limits reset.
 
-After the first time the ```--noupdates``` or ```-nu``` option should generally be used as it is much faster and unlikely to hit rate limits - particularly if the user has large numbers of followers.
+After the initial run the ```--update``` option is available to update data in all database followers records. It uses a blended followers / follower id request method to get user objects for all followers and update the database.
+
+The default id only processing without ```-upd``` is much faster as it only requests user objects for new followers and will hit rate limits less often. In this case the follower database records will not reflect recent changes that have occurred since the last ```update```.
 ```ruby
 end.
 ```
