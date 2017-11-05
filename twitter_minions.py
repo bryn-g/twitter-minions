@@ -1,7 +1,7 @@
 """ maintains a database of a twitter users followers and unfollowers. """
 
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import os
 import sys
@@ -19,13 +19,15 @@ def check_sqlite_database(file_path):
     file_path = str(file_path)
 
     if not os.path.isfile(file_path):
-        print "* database '" + file_path + "' does not exist."
-        create_database = raw_input("do you wish to create it? (y/n): ")
+        print("* database '" + file_path + "' does not exist.")
+        # raw_input
+        create_database = input("do you wish to create it? (y/n): ")
 
+        create_database = "{}".format(create_database)
         if create_database.lower().strip() == "y":
             create_follower_database(file_path)
         else:
-            print "* no database. exiting."
+            print("* no database. exiting.")
             sys.exit()
 
 def valid_twitter_user(user_id):
@@ -65,7 +67,7 @@ def get_follower_ids(tweepy_api, uid):
         try:
             follower_id_page = next(follower_id_pages)
         except tweepy.TweepError as err:
-            print err.message
+            print(err)
             continue
         except StopIteration:
             break
@@ -84,7 +86,7 @@ def get_users(tweepy_api, follower_ids):
 
             followers.append(user)
         except tweepy.TweepError as err:
-            print err
+            print(err)
 
     return followers
 
@@ -95,7 +97,7 @@ def create_sqlite3_connection(db_file):
         db_conn = sqlite3.connect(db_file)
         return db_conn
     except sqlite3.IntegrityError as err:
-        print err.message
+        print(err)
 
     return None
 
@@ -111,10 +113,12 @@ def get_db_follower_ids(db_connection):
         all_rows = db_cursor.fetchall()
 
         for row in all_rows:
-            db_id_list.append(row['user_id'])
+            # stopped working for 2.7 after unicode changes
+            #db_id_list.append(row['user_id'])
+            db_id_list.append(row[0])
 
     except sqlite3.IntegrityError as err:
-        print err
+        print(err)
 
     return db_id_list
 
@@ -138,8 +142,8 @@ def insert_followers(db_connection, followers_list):
         db_connection.commit()
 
     except sqlite3.IntegrityError as err:
-        print "* database insert error - " + str(user.id) + " " + user.screen_name
-        print err.message
+        print("* database insert error - " + str(user.id) + " " + user.screen_name)
+        print(err)
 
     return inserted_followers
 
@@ -162,8 +166,8 @@ def update_followers(db_connection, followers_list):
         db_connection.commit()
 
     except sqlite3.IntegrityError as err:
-        print "* database update error - " + str(user.id) + " " + user.screen_name
-        print err.message
+        print("* database update error - {} {}".format(user.id, user.screen_name))
+        print(err)
 
     return updated_followers
 
@@ -184,7 +188,7 @@ def remove_followers(db_connection, followers_id_list):
         removed_followers = len(followers_id_list)
 
     except sqlite3.IntegrityError as err:
-        print err.message
+        print(err)
 
     return removed_followers
 
@@ -210,13 +214,13 @@ def insert_unfollowers(db_connection, followers_id_list):
 
             inserted_unfollowers += 1
 
-            print "- unfollower: " + str(row['user_id']) + " - " + row['user_name'] + \
-                  " - " + row['user_screen_name']
+            print("- unfollower: " + str(row['user_id']) + " - " + row['user_name'] + \
+                  " - " + row['user_screen_name'])
 
         db_connection.commit()
 
     except sqlite3.IntegrityError as err:
-        print err.message
+        print(err)
 
     return inserted_unfollowers
 
@@ -246,19 +250,20 @@ def create_follower_database(db_name):
         db_cursor.execute(sql_create_followers_table)
         db_cursor.execute(sql_create_unfollowers_table)
     except sqlite3.IntegrityError as err:
-        print err.message
+        print(err)
         sys.exit()
 
     db_connection.commit()
 
-    print "* created " + db_name
+    print("* created " + db_name)
 
     db_connection.close()
 
 def get_arguments():
     """ parse and return user supplied arguments. """
 
-    parser = argparse.ArgumentParser(description='maintains a database of a twitter users followers and unfollowers.')
+    parser = argparse.ArgumentParser(description='maintains a database of a twitter users ' \
+                                                 'followers and unfollowers.')
 
     parser.add_argument('-u', '--user', help="twitter user @name or id", type=valid_twitter_user, \
                         required=True)
@@ -287,19 +292,11 @@ def print_user(twitter_user):
     user_table.add_row([user_name, str(twitter_user.id), str(twitter_user.friends_count),
                         str(twitter_user.followers_count), str(ratio)])
 
-    print user_table
+    print(user_table)
 
 def main():
     """ maintains a sqlite3 database of an individual twitter users followers and unfollowers
     with timestamps. the database has two tables 'followers' and 'unfollowers'.
-
-    usage: followers.py [-h] -u USER [-nu] [-rl]
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      -u USER, --user USER  twitter user @name or id
-      -nu, --noupdates      do not make a tweepy_api.followers request that
-                            updates user data for all database follower records
     """
 
     # twitter api application keys
@@ -307,9 +304,6 @@ def main():
     app_consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET', 'None')
     app_access_key = os.environ.get('TWITTER_ACCESS_KEY', 'None')
     app_access_secret = os.environ.get('TWITTER_ACCESS_SECRET', 'None')
-
-    reload(sys)
-    sys.setdefaultencoding('utf-8')
 
     user_args = get_arguments()
 
@@ -320,7 +314,7 @@ def main():
         tweepy_api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, \
             compression=True)
     except tweepy.TweepError as err:
-        print "tweepy error: " + str(err.message)
+        print("tweepy error: {}".format(err))
         sys.exit()
 
     twitter_user = None
@@ -330,14 +324,14 @@ def main():
     try:
         twitter_user = tweepy_api.get_user(user_args.user)
     except tweepy.TweepError as err:
-        print "tweepy.get_user error: " + str(err.message)
+        print("tweepy.get_user error: {}".format(err))
         sys.exit()
 
     print_user(twitter_user)
 
     # db name is the same as the twitter user id with sqlite extension
-    user_database_name = str(twitter_user.id) + ".sqlite"
-    print "* user database: " + user_database_name
+    user_database_name = "{}.sqlite".format(twitter_user.id)
+    print("* user database: {}".format(user_database_name))
 
     # db resides in same directory as the script
     current_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -353,22 +347,24 @@ def main():
     # list of twitter user ids for followers in the db
     db_id_list = get_db_follower_ids(db_connection)
 
-    print "* followers in database: " + str(len(db_id_list))
+    print("* followers in database: {}".format(len(db_id_list)))
 
     # list of twitter user ids returned from tweepy followers_ids api request
     twitter_id_list = get_follower_ids(tweepy_api, twitter_user.id)
 
-    print "* twitter 'tweepy_api.followers_ids': " + str(len(twitter_id_list))
+    print("* twitter 'tweepy_api.followers_ids': {}".format(len(twitter_id_list)))
 
     if user_args.noupdates and len(db_id_list) < 1:
-        print "* no records in the database. please collect followers before using the " \
-            "'no updates' option."
-        collect_followers = raw_input("do you wish to collect followers now? (y/n): ")
+        print("* no records in the database. please collect followers before using the " \
+            "'no updates' option.")
+        # raw_input
+        collect_followers = input("do you wish to collect followers now? (y/n): ")
+        collect_followers = "{}".format(collect_followers)
 
         if collect_followers.lower().strip() == "y":
             user_args.noupdates = False
         else:
-            print "* no database followers. exiting."
+            print("* no database followers. exiting.")
             db_connection.close()
             sys.exit()
 
@@ -390,30 +386,30 @@ def main():
                 new_followers_id_list.append(tweepy_follower_id)
 
         if new_followers_id_list:
-            print "* new followers ids: " + str(len(new_followers_id_list))
+            print("* new followers ids: {}".format(len(new_followers_id_list)))
             #if len(new_followers_id_list) <= 10:
-            #    print "  " + str(new_followers_id_list)
+            #    print("  " + str(new_followers_id_list))
 
             inserted_followers = 0
             new_followers = get_users(tweepy_api, new_followers_id_list)
             for follower in new_followers:
-                print "+ inserting new follower: " + str(follower.id) + " - " + follower.screen_name
+                print("+ inserting new follower: {} - {}".format(follower.id, follower.screen_name))
                 inserted_followers += insert_followers(db_connection, [follower])
 
-            print "+ new followers inserted: " + str(inserted_followers)
+            print("+ new followers inserted: {}".format(inserted_followers))
 
         if unfollowers_id_list:
-            print "* unfollowers ids: " + str(len(unfollowers_id_list))
+            print("* unfollowers ids: {}".format(len(unfollowers_id_list)))
             if len(unfollowers_id_list) <= 10:
-                print "  " + str(unfollowers_id_list)
+                print("  {}".format(unfollowers_id_list))
 
             inserted_unfollowers = 0
             inserted_unfollowers = insert_unfollowers(db_connection, unfollowers_id_list)
-            print "- inserted database unfollowers: " + str(inserted_unfollowers)
+            print("- inserted database unfollowers: {}".format(inserted_unfollowers))
 
             removed_followers = 0
             removed_followers = remove_followers(db_connection, unfollowers_id_list)
-            print "- removed database followers: " + str(removed_followers)
+            print("- removed database followers: {}".format(removed_followers))
 
     # end 'no updates' option path
     else:
@@ -430,7 +426,7 @@ def main():
             try:
                 follower = next(twitter_followers)
             except tweepy.TweepError as err:
-                print "tweepy_api.followers cursor error: " + str(err.message) + " (continue)"
+                print("tweepy_api.followers cursor error: {} (continue)".format(err))
                 #follower = next(twitter_followers)
                 continue
             except StopIteration:
@@ -438,72 +434,75 @@ def main():
 
             # update db for existing follower
             if follower.id in db_id_list:
-                #print "^ updating: " + str(follower.id) + " - " + follower.screen_name
+                #print("^ updating: " + str(follower.id) + " - " + follower.screen_name)
                 updated_followers += update_followers(db_connection, [follower])
 
                 if follower.id in db_id_list:
                     db_id_list.remove(follower.id)
                 else:
-                    print "* trying remove follower " + str(follower.id) + " - not in db_id_list"
+                    print("* trying remove follower {} - not in db_id_list".format(follower.id))
             else:
                 # insert new follower into db
-                print "+ inserting new follower: " + str(follower.id) + " - " + follower.screen_name
+                print("+ inserting new follower: {} - {}".format(follower.id, follower.screen_name))
                 inserted_followers += insert_followers(db_connection, [follower])
 
             if follower.id in twitter_id_list:
                 twitter_id_list.remove(follower.id)
             else:
-                print "* trying remove follower " + str(follower.id) + " - not in twitter_id_list"
+                print("* trying remove follower {} - not in twitter_id_list".format(follower.id))
 
         unfollower_id_list = db_id_list
         if unfollower_id_list:
             unfollower_id_list.sort()
-            print "* ids in database not in 'tweepy_api.followers': " + str(len(unfollower_id_list))
+            print("* ids in database not in 'tweepy_api.followers': " \
+                  "{}".format(len(unfollower_id_list)))
+
             if len(unfollower_id_list) <= 5:
-                print "  " + str(unfollower_id_list)
+                print("  {}".format(unfollower_id_list))
 
         # deal with spare followers missing from 'tweepy_api.followers' result
         if twitter_id_list:
             twitter_id_list.sort()
-            print "* ids in 'tweepy_api.followers_ids' not in 'tweepy_api.followers': " \
-                + str(len(twitter_id_list))
+            print("* ids in 'tweepy_api.followers_ids' not in 'tweepy_api.followers': " \
+                  "{}".format(len(twitter_id_list)))
+
             if len(twitter_id_list) <= 5:
-                print "  " + str(twitter_id_list)
+                print("  {}".format(twitter_id_list))
 
             db_id_list = get_db_follower_ids(db_connection)
             spare_followers = get_users(tweepy_api, twitter_id_list)
 
             for follower in spare_followers:
                 if follower.id in db_id_list:
-                    print "^ updating spare: " + str(follower.id) + " - " + follower.screen_name
+                    print("^ updating spare: {} - {}".format(follower.id, follower.screen_name))
                     updated_followers += update_followers(db_connection, [follower])
                 else:
-                    print "+ inserting spare: " + str(follower.id) + " - " + follower.screen_name
+                    print("+ inserting spare: {} - {}".format(follower.id, follower.screen_name))
                     inserted_followers += insert_followers(db_connection, [follower])
 
                 # if in spare follower list then not an unfollower
                 if follower.id in unfollower_id_list:
                     unfollower_id_list.remove(follower.id)
                 else:
-                    print "* trying remove spare follower " + str(follower.id) + \
-                        " - not in unfollower_id_list"
+                    print("* trying remove spare follower {} " \
+                          "- not in unfollower_id_list".format(follower.id))
 
-        print "^ updated database followers: " + str(updated_followers)
-        print "+ new followers inserted: " + str(inserted_followers)
+        print("^ updated database followers: {}".format(updated_followers))
+        print("+ new followers inserted: {}".format(inserted_followers))
 
         # unfollowers
         if unfollower_id_list:
             inserted_unfollowers = insert_unfollowers(db_connection, unfollower_id_list)
-            print "- inserted database unfollowers: " + str(inserted_unfollowers)
+            print("- inserted database unfollowers: {}".format(inserted_unfollowers))
 
             removed_followers = remove_followers(db_connection, unfollower_id_list)
-            print "- removed database followers: " + str(removed_followers)
+            print("- removed database followers: {}".format(removed_followers))
 
     # end of updates path
 
     db_connection.close()
 
-    print "end."
+    print("end.")
 
 if __name__ == '__main__':
     main()
