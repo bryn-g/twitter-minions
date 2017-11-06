@@ -28,7 +28,7 @@ optional arguments:
 
 A database will be created per user in the scripts local directory and named after their twitter user id so that it is unique.
 ```sh
-$ python followers.py -u @ladygaga
+$ python twitter-minions.py -u @ladygaga
 ```
 ```
 +-----------+----------+---------+-----------+--------+
