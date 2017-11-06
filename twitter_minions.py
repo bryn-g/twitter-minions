@@ -141,7 +141,7 @@ def process_followers(dbm, apim):
                 updated_followers += dbm.update_followers([follower])
             else:
                 print("+ inserting spare: {0} - {1}".format(follower.id, follower.screen_name))
-                inserted_followers += dbm.insert_followers(db[follower])
+                inserted_followers += dbm.insert_followers([follower])
 
     print("^ updated database followers: {0}".format(updated_followers))
     print("+ new followers inserted: {0}".format(inserted_followers))
