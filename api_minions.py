@@ -1,20 +1,23 @@
-import sys
-import argparse
+""" handles the bulk of the tweepy api operations """
+
 import tweepy
-import prettytable
+
+# todo: _follower_ids & property and setter, follower_ids_count property
+# get_follower_ids consistent with db version
 
 class APIMinions(object):
+    """ minions tweepy api class. """
+
     def __init__(self):
+        """ create the object with empty properties. """
         self.api = None
         self.user = None
 
         self.follower_ids = []
-        self.followers = []
-
-    def get_follower_count(self):
-        return len(self.follower_ids)
 
     def init_api(self, app_consumer_key, app_consumer_secret, app_access_key, app_access_secret):
+        """ creates a tweepy api object. """
+
         try:
             auth = tweepy.OAuthHandler(app_consumer_key, app_consumer_secret)
             auth.set_access_token(app_access_key, app_access_secret)
@@ -25,6 +28,11 @@ class APIMinions(object):
             print("get_api error: {0}".format(err))
 
     def get_users(self, user_ids):
+        """ gets tweepy user objects for a list of user ids.
+
+        returns:
+            list: a list of user objects.
+        """
         users = []
         for uid in user_ids:
             try:
@@ -36,24 +44,21 @@ class APIMinions(object):
 
         return users
 
-    def print_user_summary(self):
-        user_table = prettytable.PrettyTable(["user", "id", "friends", "followers", "ratio"])
-        user_table.align = "l"
+    def get_follower_count(self):
+        """ gets the current follower id count.
 
-        user_name = "@{0}".format(self.user.screen_name)
-
-        ratio = 0
-        if self.user.friends_count > 0:
-            ratio = float(self.user.followers_count) / float(self.user.friends_count)
-
-        ratio = "{0:.2f}".format(ratio)
-
-        user_table.add_row([user_name, str(self.user.id), str(self.user.friends_count),
-                            str(self.user.followers_count), str(ratio)])
-
-        print(user_table)
+        returns:
+            int: the number of ids in the follower_ids list.
+        """
+        return len(self.follower_ids)
 
     def get_follower_ids(self):
+        """ gets the follower ids for the users followers from api.followers_ids request.
+
+        returns:
+            list: follower ids.
+        """
+
         follower_ids = []
         follower_id_pages = tweepy.Cursor(self.api.followers_ids, user_id=self.user.id,
                                           cursor=-1).pages()
@@ -69,9 +74,4 @@ class APIMinions(object):
             follower_ids.extend(follower_id_page)
 
         self.follower_ids = follower_ids
-        return follower_ids
-
-    # tba
-    def get_followers(self):
-        followers = []
-        follower_items = tweepy.Cursor(self.api.followers, user_id=self.user.id).items()
+        #return follower_ids

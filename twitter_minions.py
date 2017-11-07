@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import tweepy
+import prettytable
 
 import api_minions
 import db_minions
@@ -33,10 +34,8 @@ def valid_user_id(user_id):
 def get_arguments():
     parser = argparse.ArgumentParser(description='maintains a database of a twitter users ' \
                                      'followers and unfollowers.')
-
     parser.add_argument('-u', '--user', help="twitter user @name or numeric id", \
                         type=valid_user_id, required=True)
-
     parser.add_argument('-upd', '--update', help="make a tweepy_api.followers " \
                         "request that updates user data for all database follower records",
                         required=False, action='store_true')
@@ -53,20 +52,16 @@ def process_unfollowers(dbm, apim):
         if follower_id not in apim.follower_ids:
             dbm.unfollower_ids.append(follower_id)
 
-    print("* unfollowers: ", dbm.get_unfollower_count())
-
     # insert unfollowers in db, remove followers from db
     if dbm.unfollower_ids:
-        num_unfollowers = dbm.get_unfollower_count()
-        print("* unfollowers ids: {0}".format(num_unfollowers))
-        if num_unfollowers <= 10:
-            print("  {0}".format(dbm.unfollower_ids))
+        dbm.insert_unfollowers(dbm.unfollower_ids)
+        dbm.remove_followers(dbm.unfollower_ids)
 
-        inserted_unfollowers = dbm.insert_unfollowers(dbm.unfollower_ids)
-        print("- inserted database unfollowers: {0}".format(inserted_unfollowers))
-
-        removed_followers = dbm.remove_followers(dbm.unfollower_ids)
-        print("- removed database followers: {0}".format(removed_followers))
+def print_unfollowers(dbm):
+    if dbm.unfollowers:
+        print("\n- unfollowers:")
+        for unfollower in dbm.unfollowers:
+            print("    {0} - @{1} - {2}".format(unfollower['id'], unfollower['screen_name'], unfollower['name']))
 
 def process_follower_ids(dbm, apim):
 
@@ -78,26 +73,33 @@ def process_follower_ids(dbm, apim):
 
     # insert new followers in db
     if dbm.new_follower_ids:
-        print("* new followers ids: {0}".format(dbm.get_new_follower_count()))
 
-        inserted_followers = 0
+        display_new_followers = ""
+
         new_followers = apim.get_users(dbm.new_follower_ids)
         for follower in new_followers:
-            print("+ inserting new follower: {0} - {1}".format(follower.id, \
-                follower.screen_name))
-            inserted_followers += dbm.insert_followers([follower])
+            #print("+ inserting new follower: {0} - @{1}".format(follower.id, \
+            #    follower.screen_name), end='\r')
+            dbm.insert_followers([follower])
 
-        print("+ new followers inserted: {0}".format(inserted_followers))
+            if dbm.inserted_followers <= 10:
+                display_new_followers += "    {1} - @{2} - {3}".format(dbm.inserted_followers, \
+                    follower.id, follower.screen_name, follower.name)
+            else:
+                display_new_followers = "    {1} - @{2} - {3}".format(dbm.inserted_followers, \
+                    follower.id, follower.screen_name, follower.name)
+
+        if dbm.inserted_followers:
+            print("\n+ new followers:")
+            print(display_new_followers)
 
     # unfollowers
     process_unfollowers(dbm, apim)
+    print_unfollowers(dbm)
 
 def process_followers(dbm, apim):
 
-    inserted_followers = 0
-    updated_followers = 0
-    inserted_unfollowers = 0
-    removed_followers = 0
+    display_new_followers = ""
 
     # decrementing list
     spare_follower_ids = list(apim.follower_ids)
@@ -115,42 +117,81 @@ def process_followers(dbm, apim):
 
         # if follower in db then update their db record
         if follower.id in dbm.follower_ids:
-            updated_followers += dbm.update_followers([follower])
+            dbm.update_followers([follower])
 
         # if follower not in db then insert new follower
         else:
-            print("+ inserting new follower: {0} - {1}".format(follower.id, \
-                follower.screen_name))
-            inserted_followers += dbm.insert_followers([follower])
+            #print("+ new follower: {0} - @{1}".format(follower.id, \
+            #    follower.screen_name), end='\r') # end='\r'
+            dbm.insert_followers([follower])
+
+            if dbm.inserted_followers <= 10:
+                display_new_followers += "    {1} - @{2} - {3}".format(dbm.inserted_followers, \
+                    follower.id, follower.screen_name, follower.name)
+            else:
+                display_new_followers = "    {1} - @{2} - {3}".format(dbm.inserted_followers, \
+                    follower.id, follower.screen_name, follower.name)
 
         # remove follower from spare followers
         if follower.id in spare_follower_ids:
             spare_follower_ids.remove(follower.id)
         else:
+            # so id in /followers but not /follower_ids - happens sometimes
             print("* trying remove follower {0} - not in spare_follower_ids".format(follower.id))
 
+    if dbm.inserted_followers:
+        print("\n+ new followers:")
+        print(display_new_followers)
+
     if spare_follower_ids:
-        print("* ids in 'tweepy_api.followers_ids' not in 'tweepy_api.followers': " \
+        print("\n^ ids in '/followers/ids' not in '/followers/list': " \
               "{0}".format(len(spare_follower_ids)))
 
         spare_followers = apim.get_users(spare_follower_ids)
 
         for follower in spare_followers:
             if follower.id in dbm.follower_ids:
-                print("^ updating spare: {0} - {1}".format(follower.id, follower.screen_name))
-                updated_followers += dbm.update_followers([follower])
+                print("    {0} - @{1} - {2}".format(follower.id, follower.screen_name, follower.name))
+                dbm.update_followers([follower])
             else:
-                print("+ inserting spare: {0} - {1}".format(follower.id, follower.screen_name))
-                inserted_followers += dbm.insert_followers([follower])
-
-    print("^ updated database followers: {0}".format(updated_followers))
-    print("+ new followers inserted: {0}".format(inserted_followers))
+                print("    {0} - @{1} - {2}".format(follower.id, follower.screen_name, follower.name))
+                dbm.insert_followers([follower])
 
     # unfollowers
     process_unfollowers(dbm, apim)
+    print_unfollowers(dbm)
+
+def print_user_summary(user):
+    """ prints a brief summary of user information. """
+
+    user_table = prettytable.PrettyTable(["user", "id", "friends", "followers", "ratio"])
+    user_table.align = "l"
+
+    user_name = "@{0}".format(user.screen_name)
+
+    ratio = 0
+    if user.friends_count > 0:
+        ratio = float(user.followers_count) / float(user.friends_count)
+
+    ratio = "{0:.2f}".format(ratio)
+
+    user_table.add_row([user_name, str(user.id), str(user.friends_count),
+                        str(user.followers_count), str(ratio)])
+
+    print(user_table)
+
+def get_user_database_path(user_id):
+    # db name is the same as the twitter user id
+    user_database_name = "{0}.sqlite".format(user_id)
+    #print("* user database: {0}".format(user_database_name))
+
+    # db resides in same directory as the script
+    current_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
+    user_database_path = os.path.join(current_directory, user_database_name)
+
+    return user_database_path
 
 def main():
-    # twitter api application keys
     app_consumer_key = os.environ.get('TWITTER_CONSUMER_KEY', 'None')
     app_consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET', 'None')
     app_access_key = os.environ.get('TWITTER_ACCESS_KEY', 'None')
@@ -163,7 +204,7 @@ def main():
                   app_access_key, app_access_secret)
 
     if not apim.api:
-        print("* unable to init the tweepy api.")
+        print("* unable to initialize the tweepy api.")
         sys.exit()
 
     apim.user = apim.get_users([user_args.user])[0]
@@ -172,35 +213,27 @@ def main():
         print("* unable to retrieve user: {0}".format(user_args.user))
         sys.exit()
 
-    apim.print_user_summary()
+    print_user_summary(apim.user)
 
-    # db name is the same as the twitter user id
-    user_database_name = "{0}.sqlite".format(apim.user.id)
-    print("* user database: {0}".format(user_database_name))
-
-    # db resides in same directory as the script
-    current_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
-    user_database_path = os.path.join(current_directory, user_database_name)
-
-    dbm = db_minions.DBMinions()
-    dbm.init_database(user_database_path)
+    dbm = db_minions.DBMinions(get_user_database_path(apim.user.id))
 
     if not dbm.connection:
         print("* unable to make a database connection: {0}".format(dbm.path))
         sys.exit()
 
     dbm.get_follower_ids()
-    print("* followers in database: {0}".format(dbm.get_follower_count()))
+
+    print("* followers in database: {0}".format(dbm.follower_ids_count))
 
     apim.get_follower_ids()
-    print("* twitter 'tweepy_api.followers_ids': {0}".format(apim.get_follower_count()))
+    print("* followers in '/followers/ids': {0}".format(apim.get_follower_count()))
 
     # if no db followers ask to do a full update
-    if not user_args.update and dbm.get_follower_count() < 1:
+    if not user_args.update and dbm.follower_ids_count < 1:
 
         print("* no records in the database. please collect some followers by using the " \
             "'-upd' updates option or select 'y'.")
-        collect_followers = input("do you wish to collect followers now? (y/n): ")
+        collect_followers = input("  do you wish to collect followers now? (y/n): ")
 
         if collect_followers.lower().strip() == "y":
             user_args.update = True
@@ -216,6 +249,16 @@ def main():
     # full update
     else:
         process_followers(dbm, apim)
+
+    stats_table = prettytable.PrettyTable(["attr", "value"], header=False)
+    stats_table.align = "l"
+
+    stats_table.add_row(["new followers", dbm.inserted_followers])
+    stats_table.add_row(["updated followers", dbm.updated_followers])
+    unfollowers_str = "{} ({})".format(dbm.removed_followers, dbm.inserted_unfollowers)
+    stats_table.add_row(["unfollowers", unfollowers_str])
+
+    print(stats_table)
 
     dbm.close_connection()
 
