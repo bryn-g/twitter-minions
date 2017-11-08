@@ -5,28 +5,36 @@ import tweepy
 class APIMinions(object):
     """ minions tweepy api helper class. """
 
-    def __init__(self):
+    def __init__(self, app_consumer_key, app_consumer_secret, app_access_key, \
+                 app_access_secret):
         """ create the object with empty properties. """
         self.api = None
         self.user = None
 
         self._follower_ids = []
 
+        # instantiate the tweepy api with provided auth tokens
+        self._init_api(app_consumer_key, app_consumer_secret, app_access_key, \
+                       app_access_secret)
+
     @property
     def follower_ids(self):
+        """ returns list of follower ids """
         return self._follower_ids
 
     @follower_ids.setter
     def follower_ids(self, ids):
+        """ set follower ids by appending ids to list """
         self._follower_ids += ids
 
     @property
     def follower_ids_count(self):
+        """ returns number of follower ids in list """
         return len(self._follower_ids)
 
-    def init_api(self, app_consumer_key, app_consumer_secret, app_access_key, app_access_secret):
-        """ creates a tweepy api object. """
-
+    def _init_api(self, app_consumer_key, app_consumer_secret, app_access_key, \
+                  app_access_secret):
+        """ instantiates a tweepy api object. """
         try:
             auth = tweepy.OAuthHandler(app_consumer_key, app_consumer_secret)
             auth.set_access_token(app_access_key, app_access_secret)
