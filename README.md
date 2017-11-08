@@ -1,7 +1,7 @@
 # twitter-minions
 Maintains simple ad hoc database of a twitter users followers and unfollowers. Data is collected using the python [tweepy](http://www.tweepy.org/) wrapper for the [twitter api](https://developer.twitter.com/en/docs/api-reference-index) and stored in a sqlite3 database.
 
-This project was created to figure out who has unfollowed or followed me when I notice changes in my twitter follower count. Additional data such as follower json is stored as it may be useful for some analytics in the future.
+This is a hobby project created to figure out who has un/followed me when I notice changes in my twitter follower count. Additional data such as follower json is stored as it may be useful for some analytics at some stage.
 
 Unfollowers and followers are determined by comparing current followers to the database records. People who both follow and then unfollow in-between instances of running the script will not be captured in the database.
 
@@ -26,7 +26,7 @@ optional arguments:
 
 ### Database
 
-A database will be created per user in the scripts local directory and named after their twitter user id so that it is unique.
+A database is created per user in the scripts local directory and named after their twitter user id so that it is unique.
 ```sh
 $ python twitter-minions.py -u @ladygaga
 ```
@@ -41,7 +41,7 @@ $ python twitter-minions.py -u @ladygaga
 do you wish to create it? (y/n): y
 * created 14230524.sqlite
 ```
-The database will have two tables ```followers``` and ```unfollowers``` that store follower records. Records data is derived from the twitter api user objects returned from either ```tweepy.followers``` or ```tweepy.get_user``` api requests. Records also have timestamps to track when a follower was added, updated or unfollowed.
+The database has two tables ```followers``` and ```unfollowers``` that store follower records. Records data is derived from the twitter api user objects returned from either ```tweepy.followers``` or ```tweepy.get_user``` api requests. Records also have timestamps to track when a follower was added, updated or unfollowed.
 
 #### ```followers``` table
 
@@ -71,9 +71,9 @@ If new followers are found the script inserts their data into the ```followers``
 
 If the ```--update``` option is used then user objects will be retrieved for all users in the ```followers``` table of the database and all fields except ```user_id``` and ```user_time_found``` updated per record. This means the database will have an updated data record for a follower as of the last time the script was run.
 
-The first time the script is run for a user it will need to do a full update to populate the database. This can be very slow and may require many lengthy pauses whilst the twitter api rate limits reset.
+The first time the script is run for a user it will need to do a full update to populate the database. This can be very slow and may require many lengthy pauses whilst the twitter api rate limits reset, depending on the number of user followers.
 
-After the initial run the he default id only processing is available that only requests user objects for new followers. In this case the follower database records will not reflect recent changes that have occurred since the last ```update```.
+After the first run the default is follower id only processing. This identifies changes in followers but only requests user objects and inserts data for any new followers found rather than updating all records.
 ```ruby
 end.
 ```
