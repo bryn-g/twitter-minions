@@ -5,10 +5,9 @@ import json
 import sqlite3
 
 class DBMinions(object):
-    """ minions sqlite3 database class. """
+    """ minions sqlite3 database helper class. """
 
     def __init__(self, path):
-
         self._path = ""
         self._connection = None
         self._cursor = None
@@ -130,13 +129,10 @@ class DBMinions(object):
             all_rows = self.cursor.fetchall()
 
             for row in all_rows:
-                #self.follower_ids.append(row['user_id'])
                 self.follower_ids = [row['user_id']]
 
         except sqlite3.Error as err:
             print("dbm, error: {0}".format(err))
-
-        #return self.follower_ids
 
     def insert_followers(self, followers_list):
         sql_insert = "INSERT INTO followers (user_id, user_name, user_screen_name, " \
@@ -157,8 +153,6 @@ class DBMinions(object):
 
         self.inserted_followers += inserted_followers
 
-        #return inserted_followers
-
     def update_followers(self, followers_list):
         sql_update = "UPDATE followers SET user_name=?, user_screen_name=?, " \
                      "user_time_updated=datetime('now'), user_json=? WHERE user_id=?;"
@@ -178,8 +172,6 @@ class DBMinions(object):
 
         self.updated_followers += updated_followers
 
-        #return updated_followers
-
     def remove_followers(self, followers_id_list):
         placeholders = ', '.join(['?']*len(followers_id_list))
         sql_remove = "DELETE FROM followers WHERE user_id IN ({0});".format(placeholders)
@@ -195,8 +187,6 @@ class DBMinions(object):
             print("remove_followers error: {0}".format(err))
 
         self.removed_followers += removed_followers
-
-        #return removed_followers
 
     def insert_unfollowers(self, followers_id_list):
         placeholders = ', '.join(['?']*len(followers_id_list))
@@ -215,8 +205,8 @@ class DBMinions(object):
                                                  row['user_screen_name'], row['user_time_found']])
 
                 inserted_unfollowers += 1
-                self.unfollowers.append({"id": row['user_id'], "screen_name": row['user_screen_name'], \
-                                         "name": row['user_name']})
+                self.unfollowers.append({"i": inserted_unfollowers, "user_id": row['user_id'], "user_screen_name": row['user_screen_name'], \
+                                         "user_name": row['user_name'], "user_time_found": row['user_time_found']})
 
             self.connection.commit()
 
@@ -224,5 +214,3 @@ class DBMinions(object):
             print("insert_unfollowers error: {0}".format(err))
 
         self.inserted_unfollowers += inserted_unfollowers
-
-        #return inserted_unfollowers

@@ -2,18 +2,27 @@
 
 import tweepy
 
-# todo: _follower_ids & property and setter, follower_ids_count property
-# get_follower_ids consistent with db version
-
 class APIMinions(object):
-    """ minions tweepy api class. """
+    """ minions tweepy api helper class. """
 
     def __init__(self):
         """ create the object with empty properties. """
         self.api = None
         self.user = None
 
-        self.follower_ids = []
+        self._follower_ids = []
+
+    @property
+    def follower_ids(self):
+        return self._follower_ids
+
+    @follower_ids.setter
+    def follower_ids(self, ids):
+        self._follower_ids += ids
+
+    @property
+    def follower_ids_count(self):
+        return len(self._follower_ids)
 
     def init_api(self, app_consumer_key, app_consumer_secret, app_access_key, app_access_secret):
         """ creates a tweepy api object. """
@@ -28,11 +37,8 @@ class APIMinions(object):
             print("get_api error: {0}".format(err))
 
     def get_users(self, user_ids):
-        """ gets tweepy user objects for a list of user ids.
+        """ gets tweepy user objects for a list of user ids. """
 
-        returns:
-            list: a list of user objects.
-        """
         users = []
         for uid in user_ids:
             try:
@@ -44,21 +50,10 @@ class APIMinions(object):
 
         return users
 
-    def get_follower_count(self):
-        """ gets the current follower id count.
-
-        returns:
-            int: the number of ids in the follower_ids list.
-        """
-        return len(self.follower_ids)
-
     def get_follower_ids(self):
-        """ gets the follower ids for the users followers from api.followers_ids request.
+        """ gets the follower ids for the users followers from api.followers_ids request. """
 
-        returns:
-            list: follower ids.
-        """
-
+        self.follower_ids = []
         follower_ids = []
         follower_id_pages = tweepy.Cursor(self.api.followers_ids, user_id=self.user.id,
                                           cursor=-1).pages()
@@ -74,4 +69,3 @@ class APIMinions(object):
             follower_ids.extend(follower_id_page)
 
         self.follower_ids = follower_ids
-        #return follower_ids
