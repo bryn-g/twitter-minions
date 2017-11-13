@@ -114,8 +114,7 @@ def process_follower_ids(dbm, apim):
 
         * does not update followers records in the database. """
 
-    summary_followers_count = 20
-    new_follower_summary = MinionSummaryList(summary_followers_count)
+    new_follower_summary = MinionSummaryList()
 
     # new followers, id in list returned from api request but not in database
     dbm.new_follower_ids = []
@@ -139,12 +138,7 @@ def process_follower_ids(dbm, apim):
 
         # print summary of followers inserted into database
         if dbm.inserted_followers:
-            last_followers_txt = ""
-            if dbm.inserted_followers > summary_followers_count:
-                last_followers_txt = "(last {0})".format(summary_followers_count)
-
-            title = "+ new followers: {0} {1}".format(dbm.inserted_followers, last_followers_txt)
-            print_follower_summary(new_follower_summary.minions, title)
+            print_follower_summary(new_follower_summary, "+ new followers:", dbm.inserted_followers)
 
 def process_followers(dbm, apim):
     """ performs insertion of new followers and updating of existing followers database
@@ -155,8 +149,7 @@ def process_followers(dbm, apim):
 
         * updates followers records in the database. """
 
-    summary_followers_count = 20
-    new_follower_summary = MinionSummaryList(summary_followers_count)
+    new_follower_summary = MinionSummaryList()
 
     # decrementing list
     spare_follower_ids = list(apim.follower_ids)
@@ -195,12 +188,7 @@ def process_followers(dbm, apim):
 
     # print summary of followers inserted into database
     if dbm.inserted_followers:
-        last_followers_txt = ""
-        if dbm.inserted_followers > summary_followers_count:
-            last_followers_txt = "(last {0})".format(summary_followers_count)
-
-        title = "+ new followers: {0} {1}".format(dbm.inserted_followers, last_followers_txt)
-        print_follower_summary(new_follower_summary.minions, title)
+        print_follower_summary(new_follower_summary, "+ new followers:", dbm.inserted_followers)
 
     # remainder user ids in spare_follower_ids are spare followers
     if spare_follower_ids:
@@ -211,8 +199,7 @@ def process_spare_followers(dbm, apim, spare_follower_ids):
         the follower record depending on if their id is in the database. prints a summary
         of new and updated followers. """
 
-    summary_followers_count = 10
-    spare_follower_summary = MinionSummaryList(summary_followers_count)
+    spare_follower_summary = MinionSummaryList()
 
     # get user objects for spare followers using api /users/show/:id request
     spare_followers = apim.get_users(spare_follower_ids)
@@ -231,23 +218,22 @@ def process_spare_followers(dbm, apim, spare_follower_ids):
         spare_follower_summary.minions = minion
 
     # print summary of spare followers updated or inserted into database
-    last_followers_txt = ""
-    if len(spare_follower_ids) > summary_followers_count:
-        last_followers_txt = "(last {0})".format(summary_followers_count)
-
-    title = "^ spare ids in '/followers/ids' not in '/followers/list':" \
-        "{0} {1}".format(len(spare_follower_ids), last_followers_txt)
-    print_follower_summary(spare_follower_summary.minions, title)
+    title = "^ spare ids in '/followers/ids' not in '/followers/list':"
+    print_follower_summary(spare_follower_summary, title, len(spare_follower_ids))
 
 # accepts MinionSummaryList.minions dictionary
-def print_follower_summary(minions, title):
+def print_follower_summary(minions_summary, title, num_followers):
     """ print a table of summary data about followers. """
-    print(title)
+
+    last_followers_txt = ""
+    if num_followers > minions_summary.list_size:
+        last_followers_txt = "(last {0})".format(minions_summary.list_size)
+    print("{0} {1} {2}".format(title, num_followers, last_followers_txt))
 
     minion_table = prettytable.PrettyTable(["", "screen name", "name"], header=False)
     minion_table.align = "l"
 
-    for i, minion in sorted(minions.items()):
+    for i, minion in sorted(minions_summary.minions.items()):
         if minion:
             minion_table.add_row([minion.prefix, minion.screen_name, minion.name])
 
@@ -258,21 +244,16 @@ def print_unfollowers(dbm):
         prints a summary of unfollowers. """
 
     if dbm.unfollowers:
-        summary_unfollowers_count = 20
-        unfollower_summary = MinionSummaryList(summary_unfollowers_count)
+        unfollower_summary = MinionSummaryList()
 
         for unfollower in dbm.unfollowers:
+            # removed @ from screen name
             minion = MinionSummary(unfollower['i'], unfollower['user_id'], \
-                                   "@{0}".format(unfollower['user_screen_name']), \
+                                   "{0}".format(unfollower['user_screen_name']), \
                                    unfollower['user_name'])
             unfollower_summary.minions = minion
 
-        last_followers_txt = ""
-        if len(dbm.unfollowers) > summary_unfollowers_count:
-            last_followers_txt = "(last {0})".format(summary_unfollowers_count)
-
-        title = "- unfollowers: {0} {1}".format(len(dbm.unfollowers), last_followers_txt)
-        print_follower_summary(unfollower_summary.minions, title)
+        print_follower_summary(unfollower_summary, "- unfollowers:", len(dbm.unfollowers))
 
 def print_user_summary(user):
     """ prints a table with some data about the twitter user. accepts a user object. """
