@@ -5,6 +5,7 @@ import sys
 import argparse
 import tweepy
 import prettytable
+import colorama
 
 import api_minions
 import db_minions
@@ -230,12 +231,14 @@ def print_follower_summary(minions_summary, title, num_followers):
         last_followers_txt = "(last {0})".format(minions_summary.list_size)
     print("{0} {1} {2}".format(title, num_followers, last_followers_txt))
 
-    minion_table = prettytable.PrettyTable(["", "screen name", "name"], header=False)
+    minion_table = prettytable.PrettyTable(["index", "screen name", "name"], header=False)
     minion_table.align = "l"
 
     for i, minion in sorted(minions_summary.minions.items()):
         if minion:
             minion_table.add_row([minion.prefix, minion.screen_name, minion.name])
+
+    minion_table.sortby = "index"
 
     print(minion_table)
 
@@ -258,10 +261,7 @@ def print_unfollowers(dbm):
 def print_user_summary(user):
     """ prints a table with some data about the twitter user. accepts a user object. """
 
-    user_table = prettytable.PrettyTable(["user", "id", "friends", "followers", "ratio"])
-    user_table.align = "l"
-
-    user_name = "@{0}".format(user.screen_name)
+    screen_name = "@{0}".format(user.screen_name)
 
     ratio = 0
     if user.friends_count > 0:
@@ -269,26 +269,38 @@ def print_user_summary(user):
 
     ratio = "{0:.2f}".format(ratio)
 
-    user_table.add_row([user_name, str(user.id), str(user.friends_count),
-                        str(user.followers_count), str(ratio)])
+    print("user:      " + colorama.Fore.MAGENTA + screen_name)
+    print("name:      " + user.name)
+    print("db:        " + str(user.id) + ".sqlite")
+    print("friends:   " + colorama.Fore.GREEN + str(user.friends_count))
+    print("followers: " + colorama.Fore.GREEN + str(user.followers_count))
 
-    print(user_table)
+    if float(ratio) < 1:
+        print("ratio:     " + colorama.Style.DIM + str(ratio))
+    else:
+        print("ratio:     "  + colorama.Fore.GREEN + str(ratio))
+
+    print()
 
 def print_stats(dbm):
     """ prints a summary about processing from DBMinions processing counters. """
 
-    stats_table = prettytable.PrettyTable(["attr", "value"], header=False)
-    stats_table.align = "l"
+    print("\nnew followers:     " + colorama.Fore.GREEN + str(dbm.inserted_followers))
+    print("updated followers: " + colorama.Fore.YELLOW + str(dbm.updated_followers))
+    print("unfollowers:       " + colorama.Fore.CYAN + "{} ({})".format(dbm.removed_followers, dbm.inserted_unfollowers))
 
-    stats_table.add_row(["new followers", dbm.inserted_followers])
-    stats_table.add_row(["updated followers", dbm.updated_followers])
-    unfollowers_str = "{} ({})".format(dbm.removed_followers, dbm.inserted_unfollowers)
-    stats_table.add_row(["unfollowers", unfollowers_str])
-
-    print(stats_table)
+def print_art():
+    print("{}twitter-_  _  ___  _  __   .___   ___".format(colorama.Fore.CYAN))
+    print("{}/  _ ` _ `(_)/ _ `(_)/ _`\/' _ `/',__)".format(colorama.Fore.CYAN))
+    print("{}| ( ) ( ) | | ( ) | ( (_) | ( ) \\__, \\".format(colorama.Fore.CYAN))
+    print("{}(_) (_) (_(_(_) (_(_`\___/(_) (_(____/\n".format(colorama.Fore.CYAN))
 
 def main():
     """ retrieves, processes and databases a users followers. """
+
+    colorama.init(autoreset=True)
+
+    print_art()
 
     app_consumer_key = os.environ.get('TWITTER_CONSUMER_KEY', 'None')
     app_consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET', 'None')
@@ -318,10 +330,10 @@ def main():
         sys.exit()
 
     dbm.get_follower_ids()
-    print("* followers in database: {0}".format(dbm.follower_ids_count))
+    print("* followers in database: {0}{1}".format(colorama.Fore.GREEN, dbm.follower_ids_count))
 
     apim.get_follower_ids()
-    print("* followers in '/followers/ids': {0}".format(apim.follower_ids_count))
+    print("* followers in '/followers/ids': {0}{1}".format(colorama.Fore.GREEN, apim.follower_ids_count))
 
     # if no db followers ask to do a full update
     if not user_args.update and dbm.follower_ids_count < 1:
@@ -348,7 +360,6 @@ def main():
     print_unfollowers(dbm)
 
     # summary of processing
-    print("* summary:")
     print_stats(dbm)
 
     dbm.close_connection()
