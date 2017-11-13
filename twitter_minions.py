@@ -139,7 +139,7 @@ def process_follower_ids(dbm, apim):
 
         # print summary of followers inserted into database
         if dbm.inserted_followers:
-            print_follower_summary(new_follower_summary, "+ new followers:", dbm.inserted_followers)
+            print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers)
 
 def process_followers(dbm, apim):
     """ performs insertion of new followers and updating of existing followers database
@@ -155,7 +155,12 @@ def process_followers(dbm, apim):
     # decrementing list
     spare_follower_ids = list(apim.follower_ids)
 
-    api_followers = tweepy.Cursor(apim.api.followers, user_id=apim.user.id).items()
+    if apim.follower_ids_count:
+        calc_reqs = int(apim.follower_ids_count) / 200
+        calc_reqs = colorama.Fore.CYAN + "* approx. {0:.2f} requests. (@ 15 requests per 15 minutes)".format(calc_reqs)
+        print(calc_reqs)
+
+    api_followers = tweepy.Cursor(apim.api.followers, user_id=apim.user.id, count=200).items()
 
     while True:
         try:
@@ -189,7 +194,7 @@ def process_followers(dbm, apim):
 
     # print summary of followers inserted into database
     if dbm.inserted_followers:
-        print_follower_summary(new_follower_summary, "+ new followers:", dbm.inserted_followers)
+        print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers)
 
     # remainder user ids in spare_follower_ids are spare followers
     if spare_follower_ids:
@@ -219,7 +224,8 @@ def process_spare_followers(dbm, apim, spare_follower_ids):
         spare_follower_summary.minions = minion
 
     # print summary of spare followers updated or inserted into database
-    title = "^ spare ids in '/followers/ids' not in '/followers/list':"
+    #title = "^ spare ids in '/followers/ids' not in '/followers/list':"
+    title = colorama.Fore.YELLOW + "* spare ids in '/followers/ids' not in '/followers/list':"
     print_follower_summary(spare_follower_summary, title, len(spare_follower_ids))
 
 # accepts MinionSummaryList.minions dictionary
@@ -256,7 +262,7 @@ def print_unfollowers(dbm):
                                    unfollower['user_name'])
             unfollower_summary.minions = minion
 
-        print_follower_summary(unfollower_summary, "- unfollowers:", len(dbm.unfollowers))
+        print_follower_summary(unfollower_summary, colorama.Fore.CYAN + "- unfollowers:", len(dbm.unfollowers))
 
 def print_user_summary(user):
     """ prints a table with some data about the twitter user. accepts a user object. """
@@ -272,7 +278,7 @@ def print_user_summary(user):
     print("user:      " + colorama.Fore.MAGENTA + screen_name)
     print("name:      " + user.name)
     print("db:        " + str(user.id) + ".sqlite")
-    print("friends:   " + colorama.Fore.GREEN + str(user.friends_count))
+    print("friends:   " + colorama.Fore.YELLOW + str(user.friends_count))
     print("followers: " + colorama.Fore.GREEN + str(user.followers_count))
 
     if float(ratio) < 1:
@@ -293,7 +299,7 @@ def print_art():
     print("{}twitter-_  _  ___  _  __   .___   ___".format(colorama.Fore.CYAN))
     print("{}/  _ ` _ `(_)/ _ `(_)/ _`\/' _ `/',__)".format(colorama.Fore.CYAN))
     print("{}| ( ) ( ) | | ( ) | ( (_) | ( ) \\__, \\".format(colorama.Fore.CYAN))
-    print("{}(_) (_) (_(_(_) (_(_`\___/(_) (_(____/\n".format(colorama.Fore.CYAN))
+    print("{}(_) (_) (_(_(_) (_(_`\___/(_) (_(____/ v0.2\n".format(colorama.Fore.CYAN))
 
 def main():
     """ retrieves, processes and databases a users followers. """
@@ -330,10 +336,12 @@ def main():
         sys.exit()
 
     dbm.get_follower_ids()
-    print("* followers in database: {0}{1}".format(colorama.Fore.GREEN, dbm.follower_ids_count))
+    #print("* followers in database: {0}{1}".format(colorama.Fore.GREEN, dbm.follower_ids_count))
+    print("followers (db):      {0}{1}".format(colorama.Fore.GREEN, dbm.follower_ids_count))
 
     apim.get_follower_ids()
-    print("* followers in '/followers/ids': {0}{1}".format(colorama.Fore.GREEN, apim.follower_ids_count))
+    #print("* followers in '/followers/ids': {0}{1}".format(colorama.Fore.GREEN, apim.follower_ids_count))
+    print("followers (api ids): {0}{1}".format(colorama.Fore.GREEN, apim.follower_ids_count))
 
     # if no db followers ask to do a full update
     if not user_args.update and dbm.follower_ids_count < 1:
