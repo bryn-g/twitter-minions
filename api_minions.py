@@ -64,7 +64,7 @@ class APIMinions(object):
         self.follower_ids = []
         follower_ids = []
         follower_id_pages = tweepy.Cursor(self.api.followers_ids, user_id=self.user.id,
-                                          cursor=-1).pages()
+                                          cursor=-1, count=5000).pages()
         while True:
             try:
                 follower_id_page = next(follower_id_pages)
