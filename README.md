@@ -9,6 +9,7 @@ Unfollowers and followers are determined by comparing current followers to the d
 
 ```python (3.6)``` ```sqlite3 (2.6)```
 ```tweepy (3.5.0)``` ```prettytable (0.7.2)```
+```colorama (0.3.5)```
 
 ### Usage
 
@@ -31,15 +32,21 @@ A database is created per user in the scripts local directory and named after th
 $ python twitter-minions.py -u @ladygaga
 ```
 ```
-+-----------+----------+---------+-----------+--------+
-| user      | id       | friends | followers | ratio  |
-+-----------+----------+---------+-----------+--------+
-| @ladygaga | 14230524 | 128746  | 72253874  | 561.21 |
-+-----------+----------+---------+-----------+--------+
-* user database: 14230524.sqlite
-* database 'twitter-minions/14230524.sqlite' does not exist.
-do you wish to create it? (y/n): y
-* created 14230524.sqlite
+twitter-_  _  ___  _  __   .___   ___
+/  _ ` _ `(_)/ _ `(_)/ _`\/' _ `/',__)
+| ( ) ( ) | | ( ) | ( (_) | ( ) \__, \
+(_) (_) (_(_(_) (_(_`\___/(_) (_(____/ v0.2
+
+user:      @ladygaga
+name:      Lady Gaga
+db:        14230524.sqlite
+friends:   128607
+followers: 73542956
+ratio:     571.84
+
+* database '/twitter-minions/14230524.sqlite' does not exist.
+  do you wish to create it? (y/n): y
+* created /twitter-minions/14230524.sqlite
 ```
 The database has two tables ```followers``` and ```unfollowers``` that store follower records. Records data is derived from the twitter api user objects returned from either ```tweepy.followers``` or ```tweepy.get_user``` api requests. Records also have timestamps to track when a follower was added, updated or unfollowed.
 
