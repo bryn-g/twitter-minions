@@ -7,6 +7,7 @@ import argparse
 import tweepy
 import prettytable
 import colorama
+from colorama import Fore, Back, Style
 
 import api_minions
 import db_minions
@@ -154,7 +155,7 @@ def process_follower_ids(dbm, apim):
 
         # print summary of followers inserted into database
         if dbm.inserted_followers:
-            print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers, colorama.Fore.GREEN)
+            print_follower_summary(new_follower_summary, Fore.GREEN + "+ new followers:", dbm.inserted_followers, Fore.GREEN)
 
 def process_followers(dbm, apim):
     """ performs insertion of new followers and updating of existing followers database
@@ -174,7 +175,7 @@ def process_followers(dbm, apim):
         # max 200 followers per request
         calc_reqs_value = int(apim.follower_ids_count) / 200
         calc_reqs_string = "* est. {0}{1} requests{2}. (limit of 15 requests " \
-            "per 15 minutes)".format(colorama.Fore.MAGENTA, int(round(calc_reqs_value)) if calc_reqs_value > 1 \
+            "per 15 minutes)".format(Fore.MAGENTA, int(round(calc_reqs_value)) if calc_reqs_value > 1 \
             else "< 1", colorama.Fore.WHITE)
         print(calc_reqs_string)
 
@@ -182,7 +183,7 @@ def process_followers(dbm, apim):
         if calc_reqs_value >= 15:
             #calc_reqs_value = int(math.ceil(calc_reqs_value / 15.0)) * 15 # rounds up nearest 15
             calc_reqs_value = calc_reqs_value - (calc_reqs_value%15) # rounds down nearest 15
-            print("* operation is likely to take {0}~{1} minutes.".format(colorama.Fore.MAGENTA, calc_reqs_value))
+            print("* operation is likely to take {0}~{1} minutes.".format(Fore.MAGENTA, calc_reqs_value))
             calc_reqs = input("  do you wish to continue? (y/n): ")
 
             if calc_reqs.lower().strip() != "y":
@@ -195,6 +196,8 @@ def process_followers(dbm, apim):
     #summary_faux_counter = copy.copy(apim.follower_ids_count)
     summary_faux_counter = apim.follower_ids_count
 
+    iteration_counter = 0
+
     while True:
         try:
             follower = next(api_followers)
@@ -203,6 +206,8 @@ def process_followers(dbm, apim):
             continue
         except StopIteration:
             break
+
+        iteration_counter += 1
 
         # if follower in database then update their database record
         if follower.id in dbm.follower_ids:
@@ -228,9 +233,12 @@ def process_followers(dbm, apim):
             # so id in /followers but not /follower_ids - unusual but happens sometimes
             print("* trying remove follower {0} - not in spare_follower_ids".format(follower.id))
 
+    pad_to = 22
+    print("{0:<{1}s}{2}{3}".format("followers (api list):", pad_to, Fore.GREEN, iteration_counter))
+
     # print summary of followers inserted into database
     if dbm.inserted_followers:
-        print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers, colorama.Fore.GREEN)
+        print_follower_summary(new_follower_summary, Fore.GREEN + "+ new followers:", dbm.inserted_followers, Fore.GREEN)
 
     # remainder user ids in spare_follower_ids are spare followers
     if spare_follower_ids:
@@ -261,8 +269,8 @@ def process_spare_followers(dbm, apim, spare_follower_ids):
 
     # print summary of spare followers updated or inserted into database
     #title = "^ spare ids in '/followers/ids' not in '/followers/list':"
-    title = colorama.Fore.GREEN + "* spare ids in '/followers/ids' not in '/followers/list':"
-    print_follower_summary(spare_follower_summary, title, len(spare_follower_ids), colorama.Fore.GREEN)
+    title = Fore.GREEN + "* spare ids in '/followers/ids' not in '/followers/list':"
+    print_follower_summary(spare_follower_summary, title, len(spare_follower_ids), Fore.GREEN)
 
 def format_summary_table_row(index, row, table_color):
     #minion_description = textwrap.fill(minion.description, 60)
@@ -271,7 +279,7 @@ def format_summary_table_row(index, row, table_color):
 
     text_color = ["", ""]
     if not index%2:
-        text_color = [table_color, colorama.Style.RESET_ALL]
+        text_color = [table_color, Style.RESET_ALL]
 
     minion_prefix = "{0}{1}{2}".format(text_color[0], minion_prefix, text_color[1])
     minion_screen_name = "{0}{1}{2}".format(text_color[0], minion_screen_name, text_color[1])
@@ -325,44 +333,39 @@ def print_unfollowers(dbm):
                                    unfollower['user_name'], unfollower['user_time_found'])
             unfollower_summary.minions = minion
 
-        print_follower_summary(unfollower_summary, colorama.Fore.CYAN + "- unfollowers:", len(dbm.unfollowers), colorama.Fore.CYAN)
+        print_follower_summary(unfollower_summary, Fore.CYAN + "- unfollowers:", len(dbm.unfollowers), Fore.CYAN)
 
 def print_user_summary(user):
     """ prints a table with some data about the twitter user. accepts a user object. """
-
-    screen_name = "@{0}".format(user.screen_name)
 
     ratio = 0
     if user.friends_count > 0:
         ratio = float(user.followers_count) / float(user.friends_count)
 
-    ratio = "{0:.2f}".format(ratio)
-
-    print("user:      " + colorama.Fore.MAGENTA + screen_name)
-    print("name:      " + user.name)
-    print("db:        " + str(user.id) + ".sqlite")
-    print("friends:   " + colorama.Fore.YELLOW + str(user.friends_count))
-    print("followers: " + colorama.Fore.GREEN + str(user.followers_count))
-
-    if float(ratio) < 1:
-        print("ratio:     " + colorama.Style.DIM + str(ratio))
-    else:
-        print("ratio:     "  + colorama.Fore.GREEN + str(ratio))
-
+    pad_to = 11
+    print("{0:<{1}s}{2}@{3}".format("user:", pad_to, Fore.MAGENTA, user.screen_name))
+    print("{0:<{1}s}{2}".format("name:", pad_to, user.name))
+    print("{0:<{1}s}{2}.sqlite".format("db:", pad_to, user.id))
+    print("{0:<{1}s}{2}{3}".format("friends:", pad_to, Fore.YELLOW, user.friends_count))
+    print("{0:<{1}s}{2}{3}".format("followers:", pad_to, Fore.GREEN, user.followers_count))
+    print("{0:<{1}s}{2}{3:.2f}".format("ratio:", pad_to, Fore.WHITE if ratio < 1 else Fore.GREEN, ratio))
     print()
 
 def print_stats(dbm):
     """ prints a summary about processing from DBMinions processing counters. """
 
-    print("\nnew followers:     " + colorama.Fore.GREEN + str(dbm.inserted_followers))
-    print("updated followers: " + colorama.Fore.YELLOW + str(dbm.updated_followers))
-    print("unfollowers:       " + colorama.Fore.CYAN + "{} ({})".format(dbm.removed_followers, dbm.inserted_unfollowers))
+    pad_to = 19
+    print()
+    print("{0:<{1}s}{2}{3}".format("new followers:", pad_to, Fore.GREEN, dbm.inserted_followers))
+    print("{0:<{1}s}{2}{3}".format("updated followers:", pad_to, Fore.YELLOW, dbm.updated_followers))
+    print("{0:<{1}s}{2}{3} ({4})".format("unfollowers:", pad_to, Fore.CYAN, dbm.removed_followers, \
+                                         dbm.inserted_unfollowers))
 
 def print_art():
-    print("{}twitter-_  _  ___  _  __   .___   ___".format(colorama.Fore.CYAN))
-    print("{}/  _ ` _ `(_)/ _ `(_)/ _`\/' _ `/',__)".format(colorama.Fore.CYAN))
-    print("{}| ( ) ( ) | | ( ) | ( (_) | ( ) \\__, \\".format(colorama.Fore.CYAN))
-    print("{}(_) (_) (_(_(_) (_(_`\___/(_) (_(____/ v{}\n".format(colorama.Fore.CYAN, VERSION))
+    print("{0}twitter-_  _  ___  _  __   .___   ___\n" \
+             "/  _ ` _ `(_)/ _ `(_)/ _`\/' _ `/',__)\n" \
+             "| ( | | ) | | ( ) | ( (_) | ( ) \\__, \\\n" \
+             "|_| |_| |_(_(_| (_(_`\___/(_| (_(____/ {1}v{2}\n".format(Fore.CYAN, Fore.YELLOW, VERSION))
 
 def main():
     """ retrieves, processes and databases a users followers. """
@@ -398,13 +401,14 @@ def main():
         print("* unable to make a database connection: {0}".format(dbm.path))
         sys.exit()
 
+    pad_to = 22
+    # db follower ids
     dbm.get_follower_ids()
-    #print("* followers in database: {0}{1}".format(colorama.Fore.GREEN, dbm.follower_ids_count))
-    print("followers (db):      {0}{1}".format(colorama.Fore.GREEN, dbm.follower_ids_count))
+    print("{0:<{1}s}{2}{3}".format("followers (db):", pad_to, Fore.GREEN, dbm.follower_ids_count))
 
+    # api follower ids
     apim.get_follower_ids()
-    #print("* followers in '/followers/ids': {0}{1}".format(colorama.Fore.GREEN, apim.follower_ids_count))
-    print("followers (api ids): {0}{1}".format(colorama.Fore.GREEN, apim.follower_ids_count))
+    print("{0:<{1}s}{2}{3}".format("followers (api ids):", pad_to, Fore.GREEN, apim.follower_ids_count))
 
     # if no db followers ask to do a full update
     if not user_args.update and dbm.follower_ids_count < 1:
