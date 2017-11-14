@@ -2,7 +2,7 @@
 
 import os
 import sys
-import copy
+import textwrap
 import argparse
 import tweepy
 import prettytable
@@ -10,6 +10,8 @@ import colorama
 
 import api_minions
 import db_minions
+
+VERSION = "0.2"
 
 class MinionSummaryList(object):
     """ limited list of followers summary data captured during processing. """
@@ -39,16 +41,20 @@ class MinionSummaryList(object):
 
 class MinionSummary(object):
     """ summary data about a follower. """
-    def __init__(self, prefix, user_id, screen_name, name):
+    def __init__(self, prefix, user_id, screen_name, name, description=""):
         self.prefix = prefix
         self.user_id = user_id
         self.screen_name = "@{0}".format(screen_name)
         self.name = name
+        self.description = description
+
+        if str(self.description).strip() == "":
+            self.description = "(no description)"
 
     def get_minion_summary(self):
         """ return formated output of object properties. """
-        return "{0} - {1} - @{2} - {3}".format(self.prefix, self.user_id, \
-                                               self.screen_name, self.name)
+        return "{0} - {1} - @{2} - {3} - {4}".format(self.prefix, self.user_id, \
+                                               self.screen_name, self.name, self.description)
 
 def get_arguments():
     """ script arguments, user id is a required parameter. """
@@ -129,7 +135,8 @@ def process_follower_ids(dbm, apim):
     # insert new followers in database
     if dbm.new_follower_ids:
 
-        summary_faux_counter = copy.copy(apim.follower_ids_count)
+        #summary_faux_counter = copy.copy(apim.follower_ids_count)
+        summary_faux_counter = apim.follower_ids_count
 
         # gets the user objects for new followers using api /users/show/:id request
         new_followers = apim.get_users(dbm.new_follower_ids)
@@ -140,14 +147,14 @@ def process_follower_ids(dbm, apim):
 
             # dbm.inserted_followers
             minion = MinionSummary(summary_faux_counter, follower.id, \
-                                   follower.screen_name, follower.name)
+                                   follower.screen_name, follower.name, follower.description)
             new_follower_summary.minions = minion
 
             summary_faux_counter -= 1
 
         # print summary of followers inserted into database
         if dbm.inserted_followers:
-            print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers)
+            print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers, colorama.Fore.GREEN)
 
 def process_followers(dbm, apim):
     """ performs insertion of new followers and updating of existing followers database
@@ -164,9 +171,24 @@ def process_followers(dbm, apim):
     spare_follower_ids = list(apim.follower_ids)
 
     if apim.follower_ids_count:
-        calc_reqs = int(apim.follower_ids_count) / 200
-        calc_reqs = colorama.Fore.CYAN + "* approx. {0:.2f} requests. (limit 15 requests per 15 minutes)".format(calc_reqs)
-        print(calc_reqs)
+        # max 200 followers per request
+        calc_reqs_value = int(apim.follower_ids_count) / 200
+        calc_reqs_string = "* est. {0}{1} requests{2}. (limit of 15 requests " \
+            "per 15 minutes)".format(colorama.Fore.MAGENTA, int(round(calc_reqs_value)) if calc_reqs_value > 1 \
+            else "< 1", colorama.Fore.WHITE)
+        print(calc_reqs_string)
+
+        # if will take more than the request limit for 15 mins
+        if calc_reqs_value >= 15:
+            #calc_reqs_value = int(math.ceil(calc_reqs_value / 15.0)) * 15 # rounds up nearest 15
+            calc_reqs_value = calc_reqs_value - (calc_reqs_value%15) # rounds down nearest 15
+            print("* operation is likely to take {0}~{1} minutes.".format(colorama.Fore.MAGENTA, calc_reqs_value))
+            calc_reqs = input("  do you wish to continue? (y/n): ")
+
+            if calc_reqs.lower().strip() != "y":
+                print("* exiting.")
+                dbm.close_connection()
+                sys.exit();
 
     api_followers = tweepy.Cursor(apim.api.followers, user_id=apim.user.id, count=200).items()
 
@@ -194,7 +216,7 @@ def process_followers(dbm, apim):
 
             # dbm.inserted_followers
             minion = MinionSummary(summary_faux_counter, follower.id, \
-                                   follower.screen_name, follower.name)
+                                   follower.screen_name, follower.name, follower.description)
             new_follower_summary.minions = minion
 
             summary_faux_counter -= 1
@@ -208,7 +230,7 @@ def process_followers(dbm, apim):
 
     # print summary of followers inserted into database
     if dbm.inserted_followers:
-        print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers)
+        print_follower_summary(new_follower_summary, colorama.Fore.GREEN + "+ new followers:", dbm.inserted_followers, colorama.Fore.GREEN)
 
     # remainder user ids in spare_follower_ids are spare followers
     if spare_follower_ids:
@@ -234,16 +256,40 @@ def process_spare_followers(dbm, apim, spare_follower_ids):
             dbm.insert_followers([follower])
             prefix = "+"
 
-        minion = MinionSummary(prefix, follower.id, follower.screen_name, follower.name)
+        minion = MinionSummary(prefix, follower.id, follower.screen_name, follower.name, follower.description)
         spare_follower_summary.minions = minion
 
     # print summary of spare followers updated or inserted into database
     #title = "^ spare ids in '/followers/ids' not in '/followers/list':"
-    title = colorama.Fore.YELLOW + "* spare ids in '/followers/ids' not in '/followers/list':"
-    print_follower_summary(spare_follower_summary, title, len(spare_follower_ids))
+    title = colorama.Fore.GREEN + "* spare ids in '/followers/ids' not in '/followers/list':"
+    print_follower_summary(spare_follower_summary, title, len(spare_follower_ids), colorama.Fore.GREEN)
+
+def format_summary_table_row(index, row, table_color):
+    #minion_description = textwrap.fill(minion.description, 60)
+
+    minion_prefix, minion_screen_name, minion_name, minion_description = row
+
+    text_color = ["", ""]
+    if not index%2:
+        text_color = [table_color, colorama.Style.RESET_ALL]
+
+    minion_prefix = "{0}{1}{2}".format(text_color[0], minion_prefix, text_color[1])
+    minion_screen_name = "{0}{1}{2}".format(text_color[0], minion_screen_name, text_color[1])
+
+    minion_name = "{0}{1}{2}{3}".format(text_color[0], row[2][:24], ".." if len(row[2])>=24 else "", text_color[1])
+
+    minion_description = ""
+    minion_description_lines = textwrap.wrap(row[3], 60)
+    for line in minion_description_lines:
+        minion_description += text_color[0] + line + text_color[1] + "\n"
+
+    if minion_description[-1:] is "\n":
+        minion_description = minion_description[:-1]
+
+    return [minion_prefix, minion_screen_name, minion_name, minion_description]
 
 # accepts MinionSummaryList.minions dictionary
-def print_follower_summary(minions_summary, title, num_followers):
+def print_follower_summary(minions_summary, title, num_followers, table_color):
     """ print a table of summary data about followers. """
 
     last_followers_txt = ""
@@ -251,12 +297,15 @@ def print_follower_summary(minions_summary, title, num_followers):
         last_followers_txt = "(last {0})".format(minions_summary.list_size)
     print("{0} {1} {2}".format(title, num_followers, last_followers_txt))
 
-    minion_table = prettytable.PrettyTable(["index", "screen name", "name"], header=False)
+    minion_table = prettytable.PrettyTable(["index", "screen name", "name", "description"], header=False) # hrules=True
     minion_table.align = "l"
 
-    for i, minion in sorted(minions_summary.minions.items()):
+    for index, minion in sorted(minions_summary.minions.items()):
         if minion:
-            minion_table.add_row([minion.prefix, minion.screen_name, minion.name])
+            row = format_summary_table_row(index, [minion.prefix, minion.screen_name, minion.name, minion.description], table_color)
+
+            #minion_table.add_row([minion.prefix, minion.screen_name, minion_name, minion_description])
+            minion_table.add_row(row)
 
     #minion_table.sortby = "index"
 
@@ -273,10 +322,10 @@ def print_unfollowers(dbm):
             # removed @ from screen name
             minion = MinionSummary(unfollower['i'], unfollower['user_id'], \
                                    "{0}".format(unfollower['user_screen_name']), \
-                                   unfollower['user_name'])
+                                   unfollower['user_name'], unfollower['user_time_found'])
             unfollower_summary.minions = minion
 
-        print_follower_summary(unfollower_summary, colorama.Fore.CYAN + "- unfollowers:", len(dbm.unfollowers))
+        print_follower_summary(unfollower_summary, colorama.Fore.CYAN + "- unfollowers:", len(dbm.unfollowers), colorama.Fore.CYAN)
 
 def print_user_summary(user):
     """ prints a table with some data about the twitter user. accepts a user object. """
@@ -313,7 +362,7 @@ def print_art():
     print("{}twitter-_  _  ___  _  __   .___   ___".format(colorama.Fore.CYAN))
     print("{}/  _ ` _ `(_)/ _ `(_)/ _`\/' _ `/',__)".format(colorama.Fore.CYAN))
     print("{}| ( ) ( ) | | ( ) | ( (_) | ( ) \\__, \\".format(colorama.Fore.CYAN))
-    print("{}(_) (_) (_(_(_) (_(_`\___/(_) (_(____/ v0.2\n".format(colorama.Fore.CYAN))
+    print("{}(_) (_) (_(_(_) (_(_`\___/(_) (_(____/ v{}\n".format(colorama.Fore.CYAN, VERSION))
 
 def main():
     """ retrieves, processes and databases a users followers. """
