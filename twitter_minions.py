@@ -2,6 +2,7 @@
 
 import os
 import sys
+import copy
 import argparse
 import tweepy
 import prettytable
@@ -11,6 +12,31 @@ import api_minions
 import db_minions
 
 class MinionSummaryList(object):
+    """ limited list of followers summary data captured during processing. """
+    def __init__(self, summary_list_size=10):
+        self.list_size = summary_list_size
+        self._count = 0
+
+        self._minions = {}
+        for num in range(0, self.list_size):
+            self._minions[num] = None
+
+    @property
+    def minions(self):
+        """ returns list of minions objects. """
+        return self._minions
+
+    @minions.setter
+    def minions(self, minion_summary):
+        """ add minion object to list, overwrites previous entries when self.list_size reached. """
+        if self._count == self.list_size:
+            return
+            #self._count = 0
+
+        self._minions[self._count] = minion_summary
+        self._count += 1
+
+class MinionSummaryList_(object):
     """ limited list of followers summary data captured during processing. """
     def __init__(self, summary_list_size=10):
         self.list_size = summary_list_size
@@ -126,6 +152,8 @@ def process_follower_ids(dbm, apim):
     # insert new followers in database
     if dbm.new_follower_ids:
 
+        summary_faux_counter = copy.copy(apim.follower_ids_count)
+
         # gets the user objects for new followers using api /users/show/:id request
         new_followers = apim.get_users(dbm.new_follower_ids)
         for follower in new_followers:
@@ -133,9 +161,12 @@ def process_follower_ids(dbm, apim):
             #    follower.screen_name), end='\r')
             dbm.insert_followers([follower])
 
-            minion = MinionSummary(dbm.inserted_followers, follower.id, \
+            # dbm.inserted_followers
+            minion = MinionSummary(summary_faux_counter, follower.id, \
                                    follower.screen_name, follower.name)
             new_follower_summary.minions = minion
+
+            summary_faux_counter -= 1
 
         # print summary of followers inserted into database
         if dbm.inserted_followers:
@@ -157,10 +188,13 @@ def process_followers(dbm, apim):
 
     if apim.follower_ids_count:
         calc_reqs = int(apim.follower_ids_count) / 200
-        calc_reqs = colorama.Fore.CYAN + "* approx. {0:.2f} requests. (@ 15 requests per 15 minutes)".format(calc_reqs)
+        calc_reqs = colorama.Fore.CYAN + "* approx. {0:.2f} requests. (limit 15 requests per 15 minutes)".format(calc_reqs)
         print(calc_reqs)
 
     api_followers = tweepy.Cursor(apim.api.followers, user_id=apim.user.id, count=200).items()
+
+    #summary_faux_counter = copy.copy(apim.follower_ids_count)
+    summary_faux_counter = apim.follower_ids_count
 
     while True:
         try:
@@ -181,9 +215,12 @@ def process_followers(dbm, apim):
             #    follower.screen_name), end='\r') # end='\r'
             dbm.insert_followers([follower])
 
-            minion = MinionSummary(dbm.inserted_followers, follower.id, \
+            # dbm.inserted_followers
+            minion = MinionSummary(summary_faux_counter, follower.id, \
                                    follower.screen_name, follower.name)
             new_follower_summary.minions = minion
+
+            summary_faux_counter -= 1
 
         # eliminate follower from spare followers list
         if follower.id in spare_follower_ids:
@@ -244,7 +281,7 @@ def print_follower_summary(minions_summary, title, num_followers):
         if minion:
             minion_table.add_row([minion.prefix, minion.screen_name, minion.name])
 
-    minion_table.sortby = "index"
+    #minion_table.sortby = "index"
 
     print(minion_table)
 
