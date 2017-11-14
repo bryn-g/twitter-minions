@@ -28,34 +28,11 @@ class MinionSummaryList(object):
 
     @minions.setter
     def minions(self, minion_summary):
-        """ add minion object to list, overwrites previous entries when self.list_size reached. """
+        """ add minion object to list, because reverse order results currently only getting first
+            'self.list_size' number (for latest 'self.list_size' followers). """
         if self._count == self.list_size:
             return
             #self._count = 0
-
-        self._minions[self._count] = minion_summary
-        self._count += 1
-
-class MinionSummaryList_(object):
-    """ limited list of followers summary data captured during processing. """
-    def __init__(self, summary_list_size=10):
-        self.list_size = summary_list_size
-        self._count = 0
-
-        self._minions = {}
-        for num in range(0, self.list_size):
-            self._minions[num] = None
-
-    @property
-    def minions(self):
-        """ returns list of minions objects. """
-        return self._minions
-
-    @minions.setter
-    def minions(self, minion_summary):
-        """ add minion object to list, overwrites previous entries when self.list_size reached. """
-        if self._count == self.list_size:
-            self._count = 0
 
         self._minions[self._count] = minion_summary
         self._count += 1
