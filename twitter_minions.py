@@ -2,6 +2,7 @@
 
 import os
 import sys
+import re
 import textwrap
 import argparse
 import tweepy
@@ -71,28 +72,17 @@ def get_arguments():
 
     return args
 
+# accepts numeric id or twitter screen name (@name)
 def valid_user_id(user_id):
-    """ checks provided user id meets twitter constraints. """
     user_id = str(user_id)
 
-    if user_id.isdigit():
+    user_id_match = re.match(r'^@\w{1,15}$', user_id)
+
+    if user_id_match or user_id.isdigit():
         return user_id
     else:
-        if user_id[0] != '@':
-            msg = "user name must start with @."
-            raise argparse.ArgumentTypeError(msg)
-
-        if len(user_id) > 16 or len(user_id) < 2:
-            msg = "user names are 16 characters or less."
-            raise argparse.ArgumentTypeError(msg)
-
-        user_name_temp = user_id[1:]
-        for char in user_name_temp:
-            if not char.isalnum() and char != '_':
-                msg = "user name characters are alphanumeric or _."
-                raise argparse.ArgumentTypeError(msg)
-
-        return user_id
+        msg = "must start with @, be alphanumeric and < 16 characters or be a numeric id."
+        raise argparse.ArgumentTypeError(msg)
 
 def get_user_database_path(user_id):
     """ returns expected database path. uses numeric user id as database name
@@ -115,6 +105,10 @@ def process_unfollowers(dbm, apim):
         if follower_id not in apim.follower_ids:
             dbm.unfollower_ids.append(follower_id)
 
+    #dbm.unfollower_ids = [follower_id
+    #                      for follower_id in dbm.follower_ids
+    #                      if follower_id not in apim.follower_ids]
+
     if dbm.unfollower_ids:
         dbm.insert_unfollowers(dbm.unfollower_ids)
         dbm.remove_followers(dbm.unfollower_ids)
@@ -132,6 +126,10 @@ def process_follower_ids(dbm, apim):
     for follower_id in apim.follower_ids:
         if follower_id not in dbm.follower_ids:
             dbm.new_follower_ids.append(follower_id)
+
+    #dbm.new_follower_ids = [follower_id
+    #                        for follower_id in apim.follower_ids
+    #                        if follower_id not in dbm.follower_ids]
 
     # insert new followers in database
     if dbm.new_follower_ids:
@@ -388,8 +386,10 @@ def main():
         print("* unable to initialize the tweepy api.")
         sys.exit()
 
-    apim.user = apim.get_users([user_args.user])[0]
-    if not apim.user:
+    user_obj = apim.get_users([user_args.user])
+    if user_obj:
+        apim.user = user_obj[0]
+    else:
         print("* unable to retrieve user: {0}".format(user_args.user))
         sys.exit()
 
