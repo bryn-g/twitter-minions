@@ -61,10 +61,6 @@ The database has two tables ```followers``` and ```unfollowers``` that store fol
 | field | description
 | :----- | :----- |
 | id | unique unfollow record id
-| user_id | twitter id of the follower
-| user_name | twitter users full name in profile
-| user_screen_name | twitter users screen name, their @name
-| user_time_found | time that the follower record was entered into the table
 | user_time_lost | time that the follower became an unfollower
 
 ```ruby
