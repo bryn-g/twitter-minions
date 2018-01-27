@@ -62,7 +62,3 @@ The database has two tables ```followers``` and ```unfollowers``` that store fol
 | :----- | :----- |
 | id | unique unfollow record id
 | user_time_lost | time that the follower became an unfollower
-
-```ruby
-end.
-```
